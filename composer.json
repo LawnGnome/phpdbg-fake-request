@@ -1,0 +1,28 @@
+{
+    "name": "lawngnome/phpdbg-fake-request",
+    "description": "A CLI script that will fake a HTTP request before delegating control to another PHP script",
+    "type": "library",
+    "require": {
+        "php": ">=7",
+        "symfony/console": "^3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^5.3"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Adam Harvey",
+            "email": "aharvey@php.net"
+        }
+    ],
+    "autoload": {
+        "psr-4": {"LawnGnome\\PhpdbgFakeRequest\\": "src"},
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "bin": [
+        "fake-request"
+    ]
+}

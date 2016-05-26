@@ -1,0 +1,149 @@
+#!/usr/bin/env phpdbg
+<?php
+
+namespace LawnGnome\PhpdbgFakeRequest;
+
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
+use Symfony\Component\Console\Output\OutputInterface;
+
+use RuntimeException;
+
+// Shamelessly nicked from PHPUnit's bin/phpunit.
+foreach ([__DIR__.'/../../autoload.php', __DIR__.'/../vendor/autoload.php', __DIR__.'/vendor/autoload.php'] as $file) {
+	if (file_exists($file)) {
+		define('AUTOLOADER', $file);
+		break;
+	}
+}
+
+require AUTOLOADER;
+
+class ValidationException extends RuntimeException {}
+class InvalidScriptException extends ValidationException {}
+class MalformedCookieException extends ValidationException {}
+class MalformedGetVariableException extends ValidationException {}
+class MalformedHeaderException extends ValidationException {}
+class MalformedPostVariableException extends ValidationException {}
+
+$command = new class() extends Command {
+	protected function configure() {
+		$this->setName('request')
+		     ->addArgument('method', InputArgument::REQUIRED, 'The request method (eg: GET, POST, etc)')
+			 ->addArgument('uri', InputArgument::REQUIRED, 'The request URI (eg: /index.php)')
+			 ->addArgument('script', InputArgument::REQUIRED, 'The script to hand control to')
+			 ->addOption('--cookie', 'c', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Add a cookie (name=value)')
+			 ->addOption('--get', 'g', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Add a GET variable (name=value)')
+			 ->addOption('--header', 'H', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Add a header (name: value)')
+			 ->addOption('--post', 'p', InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Add a POST variable (name=value)');
+	}
+
+	protected function execute(InputInterface $input, OutputInterface $output) {
+		$this->validate($input);
+
+		$request = new Request;
+
+		$request->setAction($input->getArgument('uri'));
+		$request->setMethod($input->getArgument('method'));
+		$request->setScript(realpath($input->getArgument('script')));
+
+		foreach ($input->getOption('cookie') as $cookie) {
+			$this->addCookie($cookie, $request);
+		}
+
+		foreach ($input->getOption('get') as $get) {
+			$this->addGet($get, $request);
+		}
+
+		foreach ($input->getOption('header') as $header) {
+			$this->addHeader($header, $request);
+		}
+
+		foreach ($input->getOption('post') as $post) {
+			$this->addPost($post, $request);
+		}
+
+		$order = ini_get('request_order') ?: ini_get('variables_order');
+		foreach ($request->getSuperglobals($order) as $name => $global) {
+			$GLOBALS[$name] = $global;
+		}
+
+		include realpath($input->getArgument('script'));
+	}
+
+	protected function addCookie(string $cookie, Request $request) {
+		try {
+			$request->addCookie(...$this->split($cookie, '='));
+		} catch (ValidationException $e) {
+			throw new MalformedCookieException("Invalid value: $cookie");
+		}
+	}
+
+	protected function addGet(string $get, Request $request) {
+		try {
+			$request->addQuery(...$this->split($get, '='));
+		} catch (ValidationException $e) {
+			throw new MalformedGetVariableException("Invalid value: $get");
+		}
+	}
+
+	protected function addHeader(string $header, Request $request) {
+		try {
+			$request->addHeader(...$this->split($header, ':'));
+		} catch (ValidationException $e) {
+			throw new MalformedHeaderException("Invalid value: $header");
+		}
+	}
+
+	protected function addPost(string $post, Request $request) {
+		try {
+			$request->addPost(...$this->split($post, '='));
+		} catch (ValidationException $e) {
+			throw new MalformedPostVariableException("Invalid value: $post");
+		}
+	}
+
+	protected function validate(InputInterface $input) {
+		$script = $input->getArgument('script');
+		if (!is_file($script)) {
+			throw new InvalidScriptException("Cannot load: $script");
+		}
+	}
+
+	protected function split(string $input, string $delimiter): array {
+		if (false === strpos($input, $delimiter)) {
+			throw new ValidationException;
+		}
+		return array_map('trim', explode($delimiter, $input, 2));
+	}
+};
+
+// Adapted from
+// http://symfony.com/doc/current/components/console/single_command_tool.html
+// to allow us to fake a simple command.
+(new class($command) extends Application {
+	protected $command;
+
+	public function __construct($command) {
+		$this->command = $command;
+		parent::__construct();
+	}
+
+	protected function getCommandName(InputInterface $input) {
+		return 'request';
+	}
+
+	protected function getDefaultCommands() {
+		return array_merge(parent::getDefaultCommands(), [$this->command]);
+	}
+
+	public function getDefinition() {
+		$def = parent::getDefinition();
+		$def->setArguments();
+
+		return $def;
+	}
+})->run();
+
+// vim: set noet ts=4 sw=4:
