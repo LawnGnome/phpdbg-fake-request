@@ -43,12 +43,13 @@ $command = new class() extends Command {
 
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$this->validate($input);
+		$abspath = realpath($input->getArgument('script'));
 
 		$request = new Request;
 
 		$request->setAction($input->getArgument('uri'));
 		$request->setMethod($input->getArgument('method'));
-		$request->setScript(realpath($input->getArgument('script')));
+		$request->setScript($abspath);
 
 		foreach ($input->getOption('cookie') as $cookie) {
 			$this->addCookie($cookie, $request);
@@ -71,7 +72,8 @@ $command = new class() extends Command {
 			$GLOBALS[$name] = $global;
 		}
 
-		include realpath($input->getArgument('script'));
+		chdir(dirname($abspath));
+		include $abspath;
 	}
 
 	protected function addCookie(string $cookie, Request $request) {
