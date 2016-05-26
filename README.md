@@ -3,6 +3,8 @@
 This package provides an executable script that can be used with
 [phpdbg](http://phpdbg.com) to fake a web request.
 
+[![Build Status](https://travis-ci.org/LawnGnome/phpdbg-fake-request.svg?branch=master)](https://travis-ci.org/LawnGnome/phpdbg-fake-request)
+
 ## Installation
 
 ```sh
