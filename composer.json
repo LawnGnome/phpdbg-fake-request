@@ -23,6 +23,6 @@
         ]
     },
     "bin": [
-        "fake-request"
+        "bin/fake-request"
     ]
 }
