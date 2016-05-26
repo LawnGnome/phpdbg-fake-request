@@ -10,15 +10,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 use RuntimeException;
 
-// Shamelessly nicked from PHPUnit's bin/phpunit.
-foreach ([__DIR__.'/../../autoload.php', __DIR__.'/../autoload.php', __DIR__.'/../vendor/autoload.php', __DIR__.'/vendor/autoload.php'] as $file) {
-	if (file_exists($file)) {
-		define('AUTOLOADER', $file);
-		break;
+if (file_exists(__DIR__.'/../vendor/autoload.php')) {
+	require __DIR__.'/../vendor/autoload.php';
+} else {
+	// Work upwards until we hit an autoload.php.
+	for ($dir = __DIR__; $dir = dirname($dir); dirname($dir) != $dir) {
+		if (file_exists("$dir/vendor/autoload.php")) {
+			require "$dir/vendor/autoload.php";
+			break;
+		}
 	}
 }
-
-require AUTOLOADER;
 
 class ValidationException extends RuntimeException {}
 class InvalidScriptException extends ValidationException {}
