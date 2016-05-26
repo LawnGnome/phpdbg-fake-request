@@ -69,3 +69,5 @@ This builds on top of the excellent
 [documentation](http://phpdbg.com/docs/mocking-webserver) on the phpdbg site
 and Symfony's equally excellent
 [console component](http://symfony.com/doc/current/components/console/index.html).
+
+You can also e-mail me at aharvey@php.net, if you feel so inclined.
